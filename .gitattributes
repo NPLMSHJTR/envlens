@@ -1,0 +1,6 @@
+# Normalise line endings so the same files behave identically on every platform.
+* text=auto eol=lf
+
+# Fixtures must keep their exact bytes: the scanner tests depend on them.
+tests/fixtures/** -text
+examples/demo-service/.env* -text

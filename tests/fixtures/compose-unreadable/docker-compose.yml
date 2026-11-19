@@ -1,0 +1,7 @@
+services:
+  app:
+    image: example/app
+    env_file:
+      - .env.missing
+    environment:
+      API_KEY: placeholder

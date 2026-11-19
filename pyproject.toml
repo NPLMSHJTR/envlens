@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "envlens"
+version = "0.1.0"
+description = "Static audit of environment variables across source code, .env files, and deployment manifests."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "envlens contributors" }]
+keywords = [
+  "dotenv",
+  "environment-variables",
+  "linter",
+  "static-analysis",
+  "ci",
+  "devops",
+  "docker-compose",
+  "kubernetes",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.scripts]
+envlens = "envlens.cli:main"
+
+[project.optional-dependencies]
+dev = ["mypy>=1.10", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/envlens"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]
+
+[tool.envlens]
+# tests/ and examples/ contain synthetic code whose environment reads are test
+# data, not runtime requirements, so the repository audits its own source only.
+exclude = ["tests/**", "examples/**", "build/**", "dist/**", ".venv/**"]
+fail_on = "warning"

@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    env_file:
+      - .env.compose
+    environment:
+      - DATABASE_URL
+      - REDIS_URL
+      - GITHUB_TOKEN
+    ports:
+      - "8000:8000"

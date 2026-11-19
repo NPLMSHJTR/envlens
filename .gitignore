@@ -1,0 +1,38 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environments
+.venv/
+venv/
+.env
+
+# Build output
+dist/
+build/
+.eggs/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local environment files are ignored, except the ones that are part of the
+# repository on purpose: the contract at the root, and the fixtures that the
+# tests and the demo depend on.
+.env.*
+!.env.example
+!examples/demo-service/.env
+!examples/demo-service/.env.compose
+!examples/demo-service/.env.example
+!tests/fixtures/**/.env
+!tests/fixtures/**/.env.example
+
+# Editor and OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
