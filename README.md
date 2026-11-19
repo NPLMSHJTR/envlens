@@ -241,12 +241,14 @@ envlens check examples/demo-service
 ## Development
 
 ```bash
-python -m unittest discover -s tests -t tests   # no dependencies needed
+python -m pip install -e .                      # makes the package importable
+python -m unittest discover -s tests -t tests   # no test framework required
 python -m pip install -e ".[dev]"               # ruff and mypy, optional
 ```
 
-The test suite uses only the standard library, so it runs anywhere Python 3.11
-runs, including a bare CI container.
+The test suite needs nothing beyond the standard library and an installed copy
+of the package, so it runs anywhere Python 3.11 runs, including a bare CI
+container.
 
 ## License
 

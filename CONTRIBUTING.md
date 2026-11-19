@@ -6,11 +6,13 @@ trustworthy.
 
 ## Development setup
 
-No third-party package is required to run the test suite.
+No test framework is required; the suite uses `unittest`. The package itself has
+to be importable first.
 
 ```bash
 git clone https://github.com/NPLMSHJTR/envlens.git
 cd envlens
+python -m pip install -e .
 python -m unittest discover -s tests -t tests -v
 ```
 
