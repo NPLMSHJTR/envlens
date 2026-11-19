@@ -59,7 +59,7 @@ never learned about it.
 | `invalid-line` | warning | A line is neither a comment nor an assignment. |
 | `case-collision` | warning | Two keys differ only by case and collide in POSIX shells. |
 
-Nine rules, thirteen languages, and four manifest formats. Nothing in the list
+Nine rules, twenty languages, and eight manifest formats. Nothing in the list
 requires a schema file, an annotation, or a change to your application code.
 
 ## Install
@@ -162,6 +162,24 @@ repos:
         pass_filenames: false
 ```
 
+## Use it from any language
+
+The audit is language-agnostic: a Go service on Fly.io, a Rails app on Heroku, a
+Dart client, and a Python worker in the same repository are read in one pass.
+Two consumption paths avoid a Python-specific setup step:
+
+- **GitHub Action** — a composite action installs the CLI and runs it, so a
+  Node, Go, or Rust repository needs no Python knowledge:
+
+  ```yaml
+  - uses: NPLMSHJTR/envlens@main
+    with:
+      args: check --fail-on error
+  ```
+
+- **Any shell** — `pipx install .` once, then the same command runs locally, in
+  pre-commit, and in CI, regardless of what the project itself is written in.
+
 ## Configuration
 
 Put a `.envlens.toml` at the repository root, or a `[tool.envlens]` table in
@@ -186,10 +204,12 @@ Static analysis earns trust by admitting where it stops. `envlens` does not:
 - **Resolve computed keys.** `process.env[someVariable]` and
   `os.environ[name]` cannot be known without running the program. They are
   counted as dynamic accesses and reported in the coverage line, never guessed.
-- **Parse every language.** Python, JavaScript/TypeScript, Vue, Svelte, Astro,
-  Go, Rust, Ruby, PHP, Java, Kotlin, and C# are scanned. A key read only by, say,
-  a Swift or Elixir file is invisible to this tool; the `unused-in-code` warning
-  therefore says "no scanned source reads it", not "nothing reads it".
+- **Parse every language.** Python, JavaScript/TypeScript (including Deno and
+  Bun), Vue, Svelte, Astro, Go, Rust, Ruby, PHP, Java, Kotlin, C#, Swift, Dart,
+  Elixir, Scala, C/C++, Lua, R, Julia, Perl, and Clojure are scanned. A key read
+  only by, say, a Haskell or Zig file is invisible to this tool; the
+  `unused-in-code` warning therefore says "no scanned source reads it", not
+  "nothing reads it".
 - **Read values for comparison.** Presence is compared, not content. The one
   exception is `secret-in-example`, which pattern-matches credential shapes in
   files that are meant to be committed.
@@ -223,7 +243,7 @@ file cache. They describe this implementation, not a promise about yours.
 
 | Measurement | Result |
 | --- | --- |
-| Test suite | 61 tests, all passing |
+| Test suite | 69 tests, all passing |
 | Audit of 3,000 generated source files | 0.581 s median (≈5,160 files/s) |
 | CLI start-up (`envlens --version`) | 0.344 s median |
 | Own repository (`envlens check .`) | 11 files, no findings |

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -98,6 +99,64 @@ class ManifestParsingTests(unittest.TestCase):
         )
         scan = parse_manifest(text, ".github/workflows/ci.yml", "ci", Path("."))
         self.assertEqual(set(scan.ci_keys), {"CI", "TOKEN"})
+        self.assertEqual(scan.keys, {})
+
+
+class PlatformManifestTests(unittest.TestCase):
+    def test_fly_toml_env_table(self) -> None:
+        text = 'app = "api"\n\n[env]\n  PORT = "8080"\n  DATABASE_URL = "postgres://db/app"\n'
+        scan = parse_manifest(text, "fly.toml", "fly", Path("."))
+        self.assertEqual(set(scan.keys), {"PORT", "DATABASE_URL"})
+        self.assertEqual(scan.runtime_files, ["fly.toml"])
+
+    def test_netlify_toml_build_and_context(self) -> None:
+        text = (
+            "[build]\n"
+            '  command = "npm run build"\n'
+            "[build.environment]\n"
+            '  API_URL = "https://staging"\n'
+            "[context.production.environment]\n"
+            '  API_URL = "https://prod"\n'
+            '  FEATURE_FLAGS = "1"\n'
+        )
+        scan = parse_manifest(text, "netlify.toml", "netlify", Path("."))
+        self.assertEqual(set(scan.keys), {"API_URL", "FEATURE_FLAGS"})
+
+    def test_render_yaml_env_vars(self) -> None:
+        text = (
+            "services:\n"
+            "  - type: web\n"
+            "    name: api\n"
+            "    envVars:\n"
+            "      - key: DATABASE_URL\n"
+            "        fromDatabase:\n"
+            "          name: db\n"
+            "      - key: SECRET_KEY\n"
+            "        sync: false\n"
+        )
+        scan = parse_manifest(text, "render.yaml", "render", Path("."))
+        self.assertEqual(set(scan.keys), {"DATABASE_URL", "SECRET_KEY"})
+
+    def test_heroku_app_json(self) -> None:
+        text = json.dumps(
+            {"name": "api", "env": {"DATABASE_URL": {"description": "db"}, "RAILS_MASTER_KEY": {}}}
+        )
+        scan = parse_manifest(text, "app.json", "heroku", Path("."))
+        self.assertEqual(set(scan.keys), {"DATABASE_URL", "RAILS_MASTER_KEY"})
+
+    def test_unrelated_app_json_is_not_a_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "app.json").write_text(
+                json.dumps({"expo": {"name": "mobile", "slug": "mobile"}}), encoding="utf-8"
+            )
+            scan = discover(root, ["."], [])
+            self.assertEqual(scan.files, [])
+            self.assertEqual(scan.runtime_files, [])
+
+    def test_unparsable_toml_is_marked_unknown(self) -> None:
+        scan = parse_manifest("[env\nBROKEN = ", "fly.toml", "fly", Path("."))
+        self.assertTrue(scan.unknown)
         self.assertEqual(scan.keys, {})
 
 

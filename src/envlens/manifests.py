@@ -18,7 +18,9 @@ Two design rules keep the output trustworthy:
 
 from __future__ import annotations
 
+import json
 import re
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -27,6 +29,10 @@ from .scanner import iter_files
 
 COMPOSE_NAME = re.compile(r"^(?:docker-)?compose(?:\.[\w-]+)*\.ya?ml$", re.IGNORECASE)
 DOCKERFILE_NAME = re.compile(r"^(?:Dockerfile(?:\.[\w-]+)?|[\w-]+\.Dockerfile)$")
+FLY_NAME = "fly.toml"
+NETLIFY_NAME = "netlify.toml"
+RENDER_NAMES = {"render.yaml", "render.yml"}
+HEROKU_NAME = "app.json"
 K8S_KIND = re.compile(r"^kind:\s*(\w+)", re.MULTILINE)
 
 SECTION = re.compile(r"^(\s*)(environment|env)\s*:\s*$")
@@ -36,6 +42,8 @@ LIST_NAME = re.compile(r"^\s*-\s*name\s*:\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
 LIST_ASSIGN = re.compile(r"^\s*-\s*([A-Za-z_][A-Za-z0-9_]*)\s*=")
 LIST_BARE = re.compile(r"^\s*-\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
 MAP_ITEM = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$")
+RENDER_SECTION = re.compile(r"^(\s*)envVars\s*:\s*$")
+RENDER_KEY = re.compile(r"^\s*-\s*key\s*:\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
 INTERPOLATION = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::?[-?+][^}]*)?\}")
 GHA_REFERENCE = re.compile(r"\$\{\{\s*(?:secrets|vars)\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
 DOCKERFILE_ARG = re.compile(r"^\s*ARG\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
@@ -158,6 +166,28 @@ def _env_file_paths(text: str) -> list[str]:
     return paths
 
 
+def _render_keys(text: str) -> set[str]:
+    """Extract ``- key: NAME`` entries from Render's ``envVars`` block."""
+    keys: set[str] = set()
+    active_indent: int | None = None
+    for raw in text.splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip(" "))
+        if active_indent is not None and indent <= active_indent:
+            active_indent = None
+        section = RENDER_SECTION.match(raw)
+        if section:
+            active_indent = len(section.group(1))
+            continue
+        if active_indent is None:
+            continue
+        match = RENDER_KEY.match(raw)
+        if match:
+            keys.add(match.group(1))
+    return keys
+
+
 def parse_manifest(text: str, rel: str, kind: str, base: Path) -> ManifestScan:
     """Parse a single manifest file into a :class:`ManifestScan`."""
     scan = ManifestScan()
@@ -169,6 +199,51 @@ def parse_manifest(text: str, rel: str, kind: str, base: Path) -> ManifestScan:
             scan.add(match.group(1), rel)
         for match in DOCKERFILE_ENV.finditer(text):
             scan.add(match.group(1), rel)
+        return scan
+
+    if kind in ("fly", "netlify"):
+        scan.runtime_files.append(rel)
+        try:
+            data = tomllib.loads(text)
+        except tomllib.TOMLDecodeError:
+            scan.mark_unknown(rel, "cannot parse TOML")
+            return scan
+        if kind == "fly":
+            env = data.get("env")
+            if isinstance(env, dict):
+                for key in env:
+                    scan.add(key, rel)
+            return scan
+
+        build = data.get("build")
+        if isinstance(build, dict) and isinstance(build.get("environment"), dict):
+            for key in build["environment"]:
+                scan.add(key, rel)
+        context = data.get("context")
+        if isinstance(context, dict):
+            for value in context.values():
+                if isinstance(value, dict) and isinstance(value.get("environment"), dict):
+                    for key in value["environment"]:
+                        scan.add(key, rel)
+        return scan
+
+    if kind == "heroku":
+        scan.runtime_files.append(rel)
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            scan.mark_unknown(rel, "cannot parse JSON")
+            return scan
+        env = data.get("env") if isinstance(data, dict) else None
+        if isinstance(env, dict):
+            for key in env:
+                scan.add(key, rel)
+        return scan
+
+    if kind == "render":
+        scan.runtime_files.append(rel)
+        for key in _render_keys(text):
+            scan.add(key, rel)
         return scan
 
     keys, unknown = extract_env_sections(text)
@@ -219,6 +294,14 @@ def discover(root: Path, targets: list[str], exclude: list[str]) -> ManifestScan
             kind = "compose"
         elif DOCKERFILE_NAME.match(name):
             kind = "dockerfile"
+        elif name == FLY_NAME:
+            kind = "fly"
+        elif name == NETLIFY_NAME:
+            kind = "netlify"
+        elif name in RENDER_NAMES:
+            kind = "render"
+        elif name == HEROKU_NAME:
+            kind = "heroku"
         elif extension in (".yml", ".yaml"):
             try:
                 rel_candidate = path.relative_to(root).as_posix()
@@ -236,6 +319,16 @@ def discover(root: Path, targets: list[str], exclude: list[str]) -> ManifestScan
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+
+        if kind == "heroku":
+            # app.json is also used by Expo and other tools; only a top-level
+            # ``env`` mapping makes it a Heroku manifest.
+            try:
+                payload = json.loads(text)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(payload, dict) or not isinstance(payload.get("env"), dict):
+                continue
 
         if kind is None:
             if K8S_KIND.search(text) and ("containers:" in text or "env:" in text):

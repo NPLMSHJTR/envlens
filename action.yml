@@ -1,0 +1,32 @@
+name: envlens
+description: Audit environment variables across source code, .env files, and deployment manifests
+author: envlens contributors
+
+branding:
+  icon: eye
+  color: purple
+
+inputs:
+  args:
+    description: Arguments passed to the envlens command
+    required: false
+    default: check --format github --fail-on warning
+  python-version:
+    description: Python version used to install the tool
+    required: false
+    default: "3.13"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install envlens
+      shell: bash
+      run: python -m pip install --disable-pip-version-check "${{ github.action_path }}"
+    - name: Run envlens
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: envlens ${{ inputs.args }}

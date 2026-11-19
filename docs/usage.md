@@ -66,18 +66,28 @@ line.
 ## Scanned languages
 
 Python, JavaScript, TypeScript, Vue, Svelte, Astro, Go, Rust, Ruby, PHP, Java,
-Kotlin, C#.
+Kotlin, C#, Swift, Dart, Elixir, Scala, C/C++, Lua, R, Julia, Perl, Clojure.
 
 | Language | Recognised forms |
 | --- | --- |
 | Python | `os.environ["K"]`, `os.environ.get("K")`, `os.getenv("K")`, `os.environ.setdefault("K", ...)` |
-| JavaScript / TypeScript | `process.env.K`, `process.env["K"]`, `const { A, B } = process.env`, `import.meta.env.K` |
+| JavaScript / TypeScript | `process.env.K`, `process.env["K"]`, `const { A, B } = process.env`, `import.meta.env.K`, `Deno.env.get("K")`, `Bun.env.K` |
 | Go | `os.Getenv("K")`, `os.LookupEnv("K")` |
 | Rust | `env::var("K")`, `env::var_os("K")` |
 | Ruby | `ENV["K"]`, `ENV.fetch("K")` |
 | PHP | `getenv("K")`, `$_ENV["K"]` |
 | Java / Kotlin | `System.getenv("K")` |
 | C# | `Environment.GetEnvironmentVariable("K")` |
+| Swift | `ProcessInfo.processInfo.environment["K"]` |
+| Dart | `Platform.environment["K"]`, `String.fromEnvironment("K")` |
+| Elixir | `System.get_env("K")`, `System.fetch_env!("K")` |
+| Scala | `sys.env("K")`, `sys.env.get("K")` |
+| C / C++ | `getenv("K")`, `std::getenv("K")` |
+| Lua | `os.getenv("K")` |
+| R | `Sys.getenv("K")` |
+| Julia | `ENV["K"]` |
+| Perl | `$ENV{K}`, `$ENV{'K'}` |
+| Clojure | `(System/getenv "K")` |
 
 Add `# envlens:ignore` on a line, or on the comment line above it, to silence
 that read. This is useful for keys whose names are assembled at runtime.
@@ -90,6 +100,14 @@ that read. This is useful for keys whose names are assembled at runtime.
 | Kubernetes | Container `env:` list entries, including `valueFrom` and `secretKeyRef` names |
 | Dockerfile | `ARG` and `ENV` declarations |
 | GitHub Actions | `env:` blocks, `${{ secrets.X }}`, `${{ vars.X }}` |
+| Fly.io (`fly.toml`) | The `[env]` table |
+| Render (`render.yaml`) | `envVars:` entries with a `key` field |
+| Netlify (`netlify.toml`) | `[build.environment]` and `[context.*.environment]` |
+| Heroku (`app.json`) | The top-level `env` mapping |
+
+Fly.io, Netlify, and Heroku manifests are parsed with `tomllib` and `json`, so
+their keys are exact rather than line-matched. A `render.yaml` is read line by
+line inside its `envVars` block.
 
 Workflow keys are tracked separately from runtime keys. A secret that CI knows
 about is not evidence that the deployed container receives it, so workflow keys
