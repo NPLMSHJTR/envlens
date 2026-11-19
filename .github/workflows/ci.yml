@@ -29,6 +29,16 @@ jobs:
       - name: Audit this repository
         run: envlens check . --fail-on warning
 
+  action:
+    name: composite action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the action against the demo repository
+        uses: ./
+        with:
+          args: check examples/demo-service --format github --fail-on never
+
   lint:
     name: lint and types
     runs-on: ubuntu-latest
