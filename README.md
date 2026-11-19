@@ -224,8 +224,8 @@ file cache. They describe this implementation, not a promise about yours.
 | Measurement | Result |
 | --- | --- |
 | Test suite | 61 tests, all passing |
-| Audit of 3,000 generated source files | 0.768 s median (≈3,900 files/s) |
-| CLI start-up (`envlens --version`) | 0.356 s median |
+| Audit of 3,000 generated source files | 0.581 s median (≈5,160 files/s) |
+| CLI start-up (`envlens --version`) | 0.344 s median |
 | Own repository (`envlens check .`) | 11 files, no findings |
 
 ## Try the demo
